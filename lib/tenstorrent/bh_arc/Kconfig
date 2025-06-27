@@ -54,6 +54,11 @@ config TT_BH_ARC_I2C_TIMEOUT_DURATION
 	  remains full for this timeout, the I2C controller will attempt to recover the bus by
 	  sending 16 SCL pulses while holding SDA low.
 
+config TT_BH_ARC_AICLK_PPM_SWEEP
+	bool "Enable aiclk ppm sweep"
+	help
+		Enable to allow aiclk ppm sweep via sweep handler.
+
 #endif
 
 config TT_SMC_RECOVERY

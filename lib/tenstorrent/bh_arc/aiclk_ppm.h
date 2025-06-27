@@ -34,9 +34,11 @@ typedef struct {
 	uint32_t fmax;        /* in MHz */
 	uint32_t fmin;        /* in MHz */
 	uint32_t forced_freq; /* in MHz, a value of zero means disabled. */
-	uint32_t sweep_en;    /* a value of one means enabled, otherwise disabled. */
-	uint32_t sweep_low;   /* in MHz */
-	uint32_t sweep_high;  /* in MHz */
+#ifdef CONFIG_TT_BH_ARC_AICLK_PPM_SWEEP
+	uint32_t sweep_en;   /* a value of one means enabled, otherwise disabled. */
+	uint32_t sweep_low;  /* in MHz */
+	uint32_t sweep_high; /* in MHz */
+#endif
 	float arbiter_max[kAiclkArbMaxCount];
 	float arbiter_min[kAiclkArbMinCount];
 } AiclkPPM;
