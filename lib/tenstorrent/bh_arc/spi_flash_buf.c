@@ -38,6 +38,7 @@ int spi_arc_dma_transfer_to_tile(const struct device *dev, const char *tag, uint
 
 	for (size_t offset = 0, len = MIN(buf_size, image_size); len > 0;
 	     image_size -= len, offset += len, len = MIN(buf_size, image_size)) {
+		memset(buf, 0, TEMP_SPI_BUFFER_SIZE);
 
 		rc = flash_read(dev, spi_address + offset, &buf, len);
 		if (rc < 0) {
