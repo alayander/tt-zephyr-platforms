@@ -120,6 +120,20 @@ static void set_max20730(uint32_t slave_addr, uint32_t voltage_in_mv, float rfb1
 	WaitUs(250);
 }
 
+static void set_mpq8655(uint32_t slave_addr, uint32_t voltage_in_mv, float rfb1, float rfb2)
+{
+	float scale_loop = 0.444f;
+
+	I2CInit(I2CMst, slave_addr, I2CFastMode, PMBUS_MST_ID);
+	uint16_t vout_cmd = voltage_in_mv * 0.5f / scale_loop / (1 + rfb1 / rfb2);
+
+	I2CWriteBytes(PMBUS_MST_ID, VOUT_COMMAND, PMBUS_CMD_BYTE_SIZE, (uint8_t *)&vout_cmd,
+		      VOUT_COMMAND_DATA_BYTE_SIZE);
+
+	/* delay to flush i2c transaction and voltage change */
+	WaitUs(250);
+}
+
 static void set_mpm3695(uint32_t slave_addr, uint32_t voltage_in_mv, float rfb1, float rfb2)
 {
 	I2CInit(I2CMst, slave_addr, I2CFastMode, PMBUS_MST_ID);
@@ -157,6 +171,19 @@ static float i2c_get_max20816(uint32_t slave_addr)
 		     READ_VOUT_DATA_BYTE_SIZE, PMBUS_FLIP_BYTES);
 
 	return vout_cmd * 0.5f;
+}
+
+void gddr_pwr_experiment(void)
+{
+	/* Experiment 1: Set GDDRIO */
+	/* TODO: 15.8 for UBB and 15 for p150 */
+	set_mpq8655(GDDRIO_EAST_ADDR, 1390, 15.8, 12);
+	set_mpq8655(GDDRIO_WEST_ADDR, 1390, 15.8, 12);
+
+	/* Experiment 2: Set VDDA, VDDR */
+	set_mpm3695(GDDR_VDDR_ADDR, 870, GDDR_VDDR_FB1, GDDR_VDDR_FB2);
+	set_mpm3695(GDDR_VDDA_EAST_ADDR, 870, GDDR_VDDR_FB1, GDDR_VDDR_FB2);
+	set_mpm3695(GDDR_VDDA_WEST_ADDR, 870, GDDR_VDDR_FB1, GDDR_VDDR_FB2);
 }
 
 void set_vcore(uint32_t voltage_in_mv)

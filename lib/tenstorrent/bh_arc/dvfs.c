@@ -9,6 +9,7 @@
 #include "throttler.h"
 #include "aiclk_ppm.h"
 #include "voltage.h"
+#include "regulator.h"
 
 bool dvfs_enabled;
 
@@ -47,6 +48,7 @@ void InitDVFS(void)
 	InitVoltagePPM();
 	InitArbMaxVoltage();
 	InitThrottlers();
+	gddr_pwr_experiment();
 	dvfs_enabled = true;
 }
 
