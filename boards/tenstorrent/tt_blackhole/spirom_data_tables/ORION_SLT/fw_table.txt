@@ -19,12 +19,13 @@ chip_limits {
 
 feature_enable {
   cg_en: true
-  noc_translation_en: false
+  noc_translation_en: true
   ddr_train_en: true
   aiclk_ppm_en: false
   watchdog_en: false
   smbus_en: false
   fan_ctrl_en: false
+  harvesting_en: true
   doppler_en: false
 }
 
@@ -66,4 +67,10 @@ pci1_property_table {
 eth_property_table {
   eth_disable_mask: 0
   eth_disable_mask_en: false
+}
+
+product_spec_harvesting {
+  dram_disable_count: 0
+  eth_disabled: false
+  tensix_col_disable_count: 2
 }
