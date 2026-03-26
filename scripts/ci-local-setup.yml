@@ -143,6 +143,7 @@
           {%- elif board_id_int == 66 %}p150c
           {%- elif board_id_int == 68 %}p300a
           {%- elif board_id_int == 69 %}p300c
+          {%- elif board_id_int == 55 %}orion_slt
           {%- else %}{{ board_id_int }} unknown{% endif %}
 
     - name: Debug board type

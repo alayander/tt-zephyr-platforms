@@ -403,6 +403,7 @@ jobs:
           - p100a
           - p150a
           - p300a
+          - orion_slt
     steps:
       - uses: actions/checkout@v4
         with:

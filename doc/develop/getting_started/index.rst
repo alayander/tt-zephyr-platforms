@@ -109,6 +109,11 @@ Select the appropriate command for your board revision:
 
             west build --sysbuild -p -b tt_blackhole@p300c/tt_blackhole/smc app/smc -- -DCONFIG_SHELL=y
 
+    .. group-tab:: orion_slt
+        .. code-block:: shell
+
+            west build --sysbuild -p -b tt_blackhole@orion_slt/tt_blackhole/smc app/smc -- -DCONFIG_SHELL=y
+
 **Step 2: Complete the deployment process**
 
 After the build completes successfully, run these commands to deploy and connect to your board:
