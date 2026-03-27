@@ -80,22 +80,19 @@ def test_recovery_cmfw(unlaunched_dut: DeviceAdapter):
     board_fs_dict = {}
     # Iterate through tt_boot_fs files for various boards in the build dir
     for boot_fs in sorted(build_dir.glob("tt_boot_fs*.hex")):
-        # Create path for patched tt_boot_fs
         suffix = _suffix_from_path(boot_fs)
-        patched_fs = build_dir / f"tt_boot_fs{suffix}_patched.bin"
+        patched_fs = build_dir / f"tt_boot_fs{suffix}_patched.hex"
 
         assert boot_fs.exists(), f"{boot_fs.name} not found at {boot_fs}"
-        bootfs_data = IntelHex(str(boot_fs)).tobinarray().tobytes()
+        ih = IntelHex(str(boot_fs))
+        bootfs_data = ih.tobinarray().tobytes()
         fs = tt_boot_fs.BootFs.from_binary(bootfs_data)
 
-        # Write copy of tt_boot_fs to new file
-        patched_fs.write_bytes(bootfs_data)
-
-        # Corrupt offset of base CMFW (main image)
+        # Corrupt the main image header so MCUBoot falls back to recovery
         smc_offset = fs.entries["mainimg"].spi_addr
-        with open(patched_fs, "r+b") as f:
-            f.seek(smc_offset)
-            f.write(b"BAD DATA")
+        for i, byte in enumerate(b"BAD DATA"):
+            ih[smc_offset + i] = byte
+        ih.write_hex_file(str(patched_fs))
         logger.info(
             f"Corrupted data at offset {hex(smc_offset)} for tt_boot_fs{suffix}"
         )
