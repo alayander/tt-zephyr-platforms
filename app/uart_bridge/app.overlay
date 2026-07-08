@@ -1,0 +1,26 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * UART bridge wiring for the Nucleo-U385RG-Q:
+ *
+ *   host-uart   = usart1  -> ST-Link Virtual COM Port -> laptop
+ *                 (PA9 = TX, PA10 = RX, already routed to the on-board ST-Link)
+ *
+ *   target-uart = usart3  -> AST2700
+ *                 (PC10 = USART3_TX, PC11 = USART3_RX on the ST morpho header)
+ *
+ * Both run 115200 8N1 by default (set in the board DTS). Adjust current-speed
+ * below if the AST2700 console uses a different rate.
+ */
+
+/ {
+	aliases {
+		host-uart = &usart1;
+		target-uart = &usart3;
+	};
+};
+
+&usart3 {
+	current-speed = <115200>;
+	status = "okay";
+};
