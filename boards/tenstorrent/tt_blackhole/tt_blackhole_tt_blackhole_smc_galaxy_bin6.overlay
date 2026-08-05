@@ -1,0 +1,29 @@
+/*
+ * Copyright (c) 2026 Tenstorrent AI ULC
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/delete-node/ &blupdate;
+/delete-node/ &dmfw;
+/delete-node/ &dmfwimg;
+
+/*
+ * galaxy_bin6 reuses galaxy_revc artifacts intentionally.
+ */
+
+&cmfw {
+	binary-path = "$BLOBS_DIR/tt_blackhole_mcuboot_GALAXY_REVC.bin";
+};
+
+&smc_recovery {
+	binary-path = "$BLOBS_DIR/tt_blackhole_recovery_GALAXY_REVC.bin";
+};
+
+&boot_fallback {
+	binary-path = "$BLOBS_DIR/tt_blackhole_mcuboot_GALAXY_REVC.bin";
+};
+
+&memfwcfg {
+	binary-path = "$BLOBS_DIR/tt_blackhole_gddr_params_GALAXY_REVC.bin";
+};
