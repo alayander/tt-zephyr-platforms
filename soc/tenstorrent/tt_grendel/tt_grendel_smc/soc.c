@@ -11,6 +11,9 @@
 #include <zephyr/sys/sys_io.h>
 
 #include "platform.h"
+#ifdef CONFIG_SIVAL_SHIM
+#include "tt_grendel_shim.h"
+#endif
 #include "soc.h"
 
 LOG_MODULE_REGISTER(soc, CONFIG_LOG_DEFAULT_LEVEL);
@@ -33,21 +36,6 @@ void k_sys_fatal_error_handler(unsigned int reason, const struct arch_esf *esf)
 	k_fatal_halt(reason);
 	CODE_UNREACHABLE;
 }
-
-/*
- * TODO: Temporary shim to resolve header names for Keraunos
- * (prefixed types, absolute _REG_ADDR). Remove when proper SiVal drop
- * is received with shared header naming scheme.
- */
-#ifdef CONFIG_SIVAL_SHIM
-typedef SMC_CPU_UART_WRAP0_UART_CTRL_reg_u UART_CTRL_reg_u;
-typedef SMC_CPU_I3C_WRAP_0_I3C_CTRL_I3C_RESET_CTRL_STATUS_reg_u
-	I3C_CTRL_I3C_RESET_CTRL_STATUS_reg_u;
-typedef SMC_CPU_I3C_WRAP_0_I3C_CTRL_PINSTRAPS_GROUP_1A_reg_u I3C_CTRL_PINSTRAPS_GROUP_1A_reg_u;
-typedef SMC_CPU_RESET_UNIT_PERIPHERAL_RESETS_reg_u
-	SMC_WRAP_RESET_UNIT_MASTER_PERIPHERAL_RESETS_reg_u;
-#define SMC_CPU_CTRL_LOCAL_BASE_REG_DEFAULT 0
-#endif
 
 #define UART_INIT_IF_OKAY(n, ...)                                                                  \
 	do {                                                                                       \

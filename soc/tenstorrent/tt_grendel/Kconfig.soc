@@ -8,3 +8,10 @@ config SOC_FAMILY
 	default "tt_grendel" if SOC_FAMILY_TT_GRENDEL
 
 rsource "*/Kconfig.soc"
+
+config SIVAL_SHIM
+	bool
+	default y if SOC_TT_KERAUNOS_SMC
+	help
+	  Map SiVal SMC_CPU_* register types to the short names used by
+	  shared Grendel drivers.

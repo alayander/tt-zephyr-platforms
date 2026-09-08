@@ -13,6 +13,9 @@
 #include <zephyr/sys/sys_io.h>
 
 #include <platform.h>
+#ifdef CONFIG_SIVAL_SHIM
+#include "tt_grendel_shim.h"
+#endif
 
 LOG_MODULE_REGISTER(dma_tt_grendel_smc);
 

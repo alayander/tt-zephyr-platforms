@@ -11,14 +11,8 @@
 #include <zephyr/sys/sys_io.h>
 
 #include <platform.h>
-
-/*
- * TODO: Temporary shim to resolve header names for Keraunos
- * (prefixed types, absolute _REG_ADDR). Remove when proper SiVal drop
- * is received with shared header naming scheme.
- */
 #ifdef CONFIG_SIVAL_SHIM
-typedef SMC_CPU_GPIO_WRAP_GPIO_0_CONTROL_reg_u GPIO_CTRL_CONTROL_reg_u;
+#include "tt_grendel_shim.h"
 #endif
 
 struct gpio_grendel_config {

@@ -13,6 +13,9 @@
 #include <zephyr/sys/util.h>
 #include <zephyr/logging/log.h>
 #include <platform.h>
+#ifdef CONFIG_SIVAL_SHIM
+#include "tt_grendel_shim.h"
+#endif
 
 LOG_MODULE_REGISTER(clock_control_tt_grendel, CONFIG_CLOCK_CONTROL_LOG_LEVEL);
 

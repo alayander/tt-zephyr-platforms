@@ -10,6 +10,9 @@
 #include <zephyr/logging/log.h>
 
 #include "platform.h"
+#ifdef CONFIG_SIVAL_SHIM
+#include "tt_grendel_shim.h"
+#endif
 
 /**
  * @file
