@@ -1,0 +1,29 @@
+# Copyright (c) 2026 Tenstorrent AI ULC
+# SPDX-License-Identifier: Apache-2.0
+#
+# Test-only knobs. The memc driver is environment-agnostic -- it takes the GDDR
+# fw_params as data -- so the bring-up target is selected here by the test
+# harness (mimir_gddr_config.c / chip_init.c / CMakeLists.txt), not by the
+# driver.
+
+source "Kconfig.zephyr"
+
+choice MEMC_TT_MIMIR_ENV
+	prompt "GDDR bring-up target environment"
+	default MEMC_TT_MIMIR_ENV_EMU
+	depends on MEMC_TT_MIMIR
+	help
+	  Selects the execution mode and PHY type the test passes to the GDDR
+	  library (fw_params), which chooses the bring-up sequence the library runs.
+
+config MEMC_TT_MIMIR_ENV_EMU
+	bool "Emulation (Zebu)"
+	help
+	  fw_params.exec_mode = EMU.
+
+config MEMC_TT_MIMIR_ENV_SIM_BEH
+	bool "RTL simulation, behavioural PHY"
+	help
+	  fw_params.exec_mode = SIM and gddr_phy_type = BEH.
+
+endchoice

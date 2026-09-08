@@ -1,0 +1,12 @@
+/*
+ * Copyright (c) 2026 Tenstorrent AI ULC
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Disable the second GDDR tile so the suite exercises the single-tile path:
+ * only gddr_tile0 stays status "okay", so the DT-derived gddr_tile_mask covers
+ * exactly one tile.
+ */
+
+&gddr_tile1 {
+	status = "disabled";
+};

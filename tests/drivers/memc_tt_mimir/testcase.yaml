@@ -1,0 +1,16 @@
+common:
+  build_only: true
+  platform_allow:
+    - tt_mimir/tt_mimir/smc
+  tags:
+    - drivers
+    - memc
+tests:
+  drivers.memc_tt_mimir.sim_beh:
+    extra_configs:
+      - CONFIG_MEMC_TT_MIMIR_ENV_SIM_BEH=y
+    extra_args:
+      - DTC_OVERLAY_FILE=single_tile.overlay
+  drivers.memc_tt_mimir.emu:
+    extra_configs:
+      - CONFIG_MEMC_TT_MIMIR_ENV_EMU=y
