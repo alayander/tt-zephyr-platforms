@@ -2110,6 +2110,7 @@ def test_ccfgovr_bh_mod(unlaunched_dut: DeviceAdapter, asic_id: int):
     restore = subprocess.run(
         [
             bh_mod,
+            "--reset-timeout=60s",
             "set",
             f"chip_limits.tdp_limit={tdp_baseline}",
             f"feature_enable.kernel_throttler_at_floor_en={'true' if kt_baseline & 1 else 'false'}",
@@ -2123,6 +2124,8 @@ def test_ccfgovr_bh_mod(unlaunched_dut: DeviceAdapter, asic_id: int):
             f"Failed to restore baseline config (rc={restore.returncode}); "
             f"SPI flash may be left modified: {restore.stderr.decode(errors='replace')}"
         )
+    del chip
+    wait_arc_boot(asic_id, timeout=60)
 
 
 def test_ccfgovr_eth_speed_override(arc_chip_dut, asic_id, board_name):
