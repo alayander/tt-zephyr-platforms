@@ -234,6 +234,22 @@ def _verify_running_versions(board_name=None, asic_id=0):
     del arc_chip
 
 
+def _expected_chip_count(board_name):
+    """Number of BH chips that must enumerate before tt-flash, or None if unknown."""
+    if board_name is None:
+        return None
+    board_name = board_name.lower()
+    if "galaxy" in board_name:
+        return 32
+    if "loudbox" in board_name:
+        return 8
+    if "quietbox2" in board_name:
+        return 4
+    if "p300" in board_name:
+        return 2
+    return 1
+
+
 def _prepare_and_launch_dut(
     unlaunched_dut: DeviceAdapter,
     flash_mcuboot_bl2=False,
@@ -248,6 +264,7 @@ def _prepare_and_launch_dut(
     should_flash_mcuboot_bl2 = flash_mcuboot_bl2 and (
         board_name is None or not _skip_boards(board_name)
     )
+    min_chips = _expected_chip_count(board_name)
 
     if flash_mcuboot_bl2 and board_name is not None and _skip_boards(board_name):
         logger.info("Skipping mcuboot-bl2 flash on board '%s'", board_name)
@@ -269,7 +286,7 @@ def _prepare_and_launch_dut(
         except subprocess.CalledProcessError as e:
             pytest.exit(f"Failed to flash mcuboot-bl2 with west flash: {e}")
         # Wait for the ARC chip to boot after bootloader flash.
-        wait_arc_boot(asic_id, timeout=timeout)
+        wait_arc_boot(asic_id, timeout=timeout, min_chips=min_chips)
 
     try:
         unlaunched_dut.launch()
@@ -279,23 +296,43 @@ def _prepare_and_launch_dut(
         pytest.exit("DUT flash timed out")
 
     # Wait for the ARC chip to boot after bootloader flash.
-    wait_arc_boot(asic_id, timeout=timeout)
+    wait_arc_boot(asic_id, timeout=timeout, min_chips=min_chips)
 
     _verify_running_versions(board_name=board_name, asic_id=asic_id)
 
 
-def wait_arc_boot(asic_id, timeout=15):
+def _chips_reachable():
+    """
+    Count chips the driver can talk to, whether or not their ARC has booted.
+
+    detect_chips() raises while a chip is still initializing, which does not
+    mean the card fell off the bus.
+    """
+    try:
+        chips = pyluwen.detect_chips_fallible(
+            local_only=True, continue_on_failure=True, noc_safe=True
+        )
+    except BaseException:
+        return 0
+    return sum(1 for chip in chips if chip.have_comms())
+
+
+def wait_arc_boot(asic_id, timeout=15, min_chips=None):
     start = time.time()
+    needed = asic_id + 1 if min_chips is None else min_chips
     # Attempt to detect the ARC chip for 15 seconds
     timeout = timeout
     while True:
         try:
             chips = pyluwen.detect_chips()
-            if len(chips) > asic_id:
-                logger.info("Detected ARC chip")
+            if len(chips) >= needed:
+                logger.info("Detected %d ARC chip(s)", len(chips))
                 break
-        except Exception:
-            logger.warning("SMC firmware requires a reset. Rescanning PCIe bus")
+            logger.warning(
+                "Detected %d/%d ARC chip(s); rescanning PCIe bus", len(chips), needed
+            )
+        except Exception as e:
+            logger.warning("SMC firmware requires a reset. Rescanning PCIe bus: %s", e)
         except BaseException as e:
             # We will continue through these exceptions, since pyluwen
             # sometimes throws rust exceptions when the chip is resetting.
@@ -307,7 +344,9 @@ def wait_arc_boot(asic_id, timeout=15):
             smc_test_recovery.recover_smc(asic_id)
             logger.error(f"Did not detect ARC chip within timeout period {timeout}")
             pytest.exit(f"Did not detect ARC chip within timeout period {timeout}")
-        rescan_pcie()
+        # Removing a chip that is merely mid-boot drops the one function we
+        # already have, and it may not come back.
+        rescan_pcie(remove=_chips_reachable() == 0)
     chip = chips[asic_id]
     try:
         status = chip.axi_read32(ARC_STATUS)
@@ -341,16 +380,10 @@ def arc_chip_dut(launched_arc_dut, asic_id):
 
 def check_chip_count(board_name):
     chips = pyluwen.detect_chips()
-    if "galaxy" in board_name:
-        assert len(chips) == 32, f"Expected 32 BH chips on Galaxy, found {len(chips)}"
-    elif "loudbox" in board_name:
-        assert len(chips) == 8, f"Expected 8 BH chips on Loudbox, found {len(chips)}"
-    elif "quietbox2" in board_name:
-        assert len(chips) == 4, f"Expected 4 BH chips on Quietbox2, found {len(chips)}"
-    elif "p300" in board_name:
-        assert len(chips) == 2, f"Expected 2 BH chips on P300, found {len(chips)}"
-    else:
-        assert len(chips) == 1, f"Expected 1 BH chip, found {len(chips)}"
+    expected = _expected_chip_count(board_name)
+    assert len(chips) == expected, (
+        f"expected {expected} BH chips on {board_name}, found {len(chips)}"
+    )
     del chips
 
 

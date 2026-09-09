@@ -42,12 +42,13 @@ def find_tt_devs():
     return devs
 
 
-def rescan_pcie():
+def rescan_pcie(remove=True):
     """
     Helper to rescan PCIe bus
+    @param remove: unbind the cards first, so the rescan re-enumerates them
     """
     # First, we must find the PCIe card to power it off
-    devs = find_tt_devs()
+    devs = find_tt_devs() if remove else []
     for dev in devs:
         remove_path = Path(dev) / "remove"
         try:
