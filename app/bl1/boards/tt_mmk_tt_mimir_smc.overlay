@@ -22,9 +22,9 @@
 	 * interrupt line exists for this remote view, so interrupts are
 	 * omitted.
 	 */
-	k_mbox: mbox@1208018000 {
+	k_mbox: mbox@1202018000 {
 		compatible = "tenstorrent,grendel-mbox";
-		reg = <0x12 0x08018000 0x0 0x20000>;
+		reg = <0x12 0x02018000 0x0 0x20000>;
 		channel-pairs = <32>;
 		#mbox-cells = <1>;
 	};
