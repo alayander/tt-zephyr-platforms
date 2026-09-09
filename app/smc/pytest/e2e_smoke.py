@@ -1271,76 +1271,114 @@ def test_aiclk(arc_chip_dut, asic_id):
         logger.info(f"AICLK set to {aiclk} MHz successfully")
 
 
-def test_mcuboot(unlaunched_dut, asic_id):
+def _read_spi(chip, addr, size):
+    buf = bytearray(size)
+    chip.as_bh().spi_read(addr, buf)
+    return bytes(buf)
+
+
+def _reset_smc():
+    # tt-smi will fail here since it checks for valid telemetry after reset,
+    # we still need to run it to trigger the SMC reboot
+    subprocess.run(["tt-smi", "-r"], capture_output=False, check=False)
+
+
+def test_mcuboot(unlaunched_dut, asic_id, board_name):
     """
     Validates that the SMC falls back to the recovery image
     when the main image is not valid.
+
+    Every ASIC on the card is staged. Both p300 ASICs boot from their own SPI,
+    and tt-flash skips a card whose ASICs are not in the same state.
     """
-    arc_chip = wait_arc_boot(asic_id, timeout=15)
+    min_chips = _expected_chip_count(board_name)
     MCUBOOT_HEADER_ADDR = 0x29E000
     MCUBOOT_MAGIC = 0x96F3B83D
+    ROM_HEADER_ADDR = 0x0
+    # One SPI sector. The boot fs descriptor table runs to 0x3FC0, but erasing
+    # its first sector is enough to make the bootrom fall over to the failover
+    # descriptor at 0x4000.
+    SPI_SECTOR_SIZE = 0x1000
+    ERASED_BLOCK = bytes([0xFF] * SPI_SECTOR_SIZE)
+    wait_arc_boot(asic_id, timeout=15, min_chips=min_chips)
+    targets = pyluwen.detect_chips()
     # First, validate we are running the base image. A good way to check this is
     # to see that telemetry data is available
-    try:
-        arc_chip.get_telemetry()
-    except Exception as e:
-        assert False, f"Failed to get telemetry data: {e}"
-    # Check that the MCUBOOT header magic is present
-    buf = bytes(4)
-    arc_chip.as_bh().spi_read(MCUBOOT_HEADER_ADDR, buf)
-    magic = int.from_bytes(buf, "little")
-    assert magic == MCUBOOT_MAGIC, (
-        f"MCUBOOT magic not found at {MCUBOOT_HEADER_ADDR:#010x}"
-    )
-    logger.info(f"MCUBOOT magic found in main image header: 0x{magic:#010x}")
+    for i, chip in enumerate(targets):
+        try:
+            chip.get_telemetry()
+        except Exception as e:
+            assert False, f"Failed to get telemetry data on chip {i}: {e}"
+        # Check that the MCUBOOT header magic is present
+        magic = int.from_bytes(_read_spi(chip, MCUBOOT_HEADER_ADDR, 4), "little")
+        assert magic == MCUBOOT_MAGIC, (
+            f"MCUBOOT magic not found at {MCUBOOT_HEADER_ADDR:#010x} on chip {i}"
+        )
+        logger.info("MCUBOOT magic found in main image header on chip %d", i)
     # Now, erase the header of the main image, so that the SMC will fall
     # back to the recovery image
     logger.info("Erasing main image header to trigger recovery fallback")
-    buf = bytes([0xFF] * 0x1000)
-    arc_chip.as_bh().spi_write(MCUBOOT_HEADER_ADDR, buf)
+    for chip in targets:
+        chip.as_bh().spi_write(MCUBOOT_HEADER_ADDR, ERASED_BLOCK)
     # Reset the SMC to trigger the fallback
-    del arc_chip  # Force re-detection of the chip
-    smi_reset_cmd = "tt-smi -r"
-    # tt-smi will fail here since it checks for valid telemetry after reset,
-    # we still need to run it to trigger the SMC reboot
-    subprocess.run(smi_reset_cmd.split(), capture_output=False, check=False)
-    arc_chip = wait_arc_boot(asic_id, timeout=15)
+    del targets  # Force re-detection of the chip
+    _reset_smc()
+
+    wait_arc_boot(asic_id, timeout=15, min_chips=min_chips)
+    targets = pyluwen.detect_chips()
     # Validate that the SMC has booted into the recovery image
-    with pytest.raises(Exception):
-        arc_chip.get_telemetry()
+    for chip in targets:
+        with pytest.raises(Exception):
+            chip.get_telemetry()
     logger.info("SMC telemetry data not available, as expected in recovery mode")
-    # Readback the ROM header. We will need it present to use tt-flash
-    header = bytes(0x1000)
-    arc_chip.as_bh().spi_read(0x0, header)
+    # Readback the ROM header. We will need it present to use tt-flash. The
+    # two p300 ASICs describe different images, so each header has to go back
+    # to the chip it came from.
+    headers = {
+        chip.get_pci_interface_id(): _read_spi(chip, ROM_HEADER_ADDR, SPI_SECTOR_SIZE)
+        for chip in targets
+    }
     # Erase the ROM header to make sure we can boot recovery from the failover
     # descriptor
-    arc_chip.as_bh().spi_write(0x0, buf)
+    for chip in targets:
+        chip.as_bh().spi_write(ROM_HEADER_ADDR, ERASED_BLOCK)
     logger.info("Erased ROM header to force failover boot from recovery image")
     # Reset the SMC to trigger the fallback. Note that we cannot check
     # the return code here since tt-smi will fail due to missing telemetry.
-    subprocess.run(smi_reset_cmd.split(), capture_output=False, check=False)
-    arc_chip = wait_arc_boot(asic_id, timeout=15)
-    with pytest.raises(Exception):
-        arc_chip.get_telemetry()
+    del targets
+    _reset_smc()
+
+    wait_arc_boot(asic_id, timeout=15, min_chips=min_chips)
+    targets = pyluwen.detect_chips()
+    for chip in targets:
+        with pytest.raises(Exception):
+            chip.get_telemetry()
     logger.info(
         "SMC telemetry data not available, as expected in "
         "recovery mode booted from failover"
     )
     # Now, restore the ROM header so we can flash a good image
-    arc_chip.as_bh().spi_write(0x0, header)
+    for chip in targets:
+        chip.as_bh().spi_write(ROM_HEADER_ADDR, headers[chip.get_pci_interface_id()])
     # Now, make sure we can flash a good image from recovery mode
+    del targets
     unlaunched_dut.launch()
-    del arc_chip  # Force re-detection of the chip
-    arc_chip = wait_arc_boot(asic_id, timeout=60)
+
+    wait_arc_boot(asic_id, timeout=60, min_chips=min_chips)
+    targets = pyluwen.detect_chips()
     # Make sure we can get telemetry data again
-    try:
-        arc_chip.get_telemetry()
-    except Exception as e:
-        assert False, f"Failed to get telemetry data after recovery: {e}"
-    # Check that the MCUBOOT header magic is present again
-    buf = bytes(4)
-    arc_chip.as_bh().spi_read(MCUBOOT_HEADER_ADDR, buf)
-    magic = int.from_bytes(buf, "little")
+    for i, chip in enumerate(targets):
+        try:
+            chip.get_telemetry()
+        except Exception as e:
+            assert False, (
+                f"Failed to get telemetry data after recovery on chip {i}: {e}"
+            )
+        # Check that the MCUBOOT header magic is present again
+        magic = int.from_bytes(_read_spi(chip, MCUBOOT_HEADER_ADDR, 4), "little")
+        assert magic == MCUBOOT_MAGIC, (
+            f"MCUBOOT magic not restored at {MCUBOOT_HEADER_ADDR:#010x} on chip {i}"
+        )
 
 
 def test_temperature_sensors(arc_chip_dut, asic_id):
