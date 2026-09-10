@@ -18,6 +18,7 @@
     },
     {
       "board": "p150a",
+      "runner": "p150a-test",
       "supports_smoke": true,
       "metal-image": "ghcr.io/tenstorrent/tt-metal/upstream-tests-bh:v0.74.0",
       "metal-target": "blackhole",
